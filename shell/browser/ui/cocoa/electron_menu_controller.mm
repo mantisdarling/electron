@@ -24,6 +24,20 @@
 #include "ui/events/keycodes/keyboard_code_conversion_mac.h"
 #include "ui/strings/grit/ui_strings.h"
 
+#if MAC_OS_X_VERSION_MAX_ALLOWED < 150000
+
+typedef NS_ENUM(NSInteger, NSMenuItemPreferredImageVisibility) {
+  NSMenuItemPreferredImageVisibilityAutomatic = 0,
+  NSMenuItemPreferredImageVisibilityAlways = 1,
+};
+
+@interface NSMenuItem (ElectronMacOS27SDKForwardDecl)
+@property(readwrite) NSMenuItemPreferredImageVisibility preferredImageVisibility
+    API_AVAILABLE(macos(15.0), ios(18.0));
+@end
+
+#endif
+
 using content::BrowserThread;
 using SharingItem = electron::ElectronMenuModel::SharingItem;
 
@@ -343,6 +357,9 @@ NSMenuItemBadge* CreateBadge(const electron::ElectronMenuModel::Badge& badge)
                                          keyEquivalent:@""];
   item.target = self;
   item.image = service.image;
+  if (@available(macOS 15.0, *)) {
+    item.preferredImageVisibility = NSMenuItemPreferredImageVisibilityAlways;
+  }
   item.representedObject = @{@"service" : service, @"items" : items};
   return item;
 }
@@ -384,8 +401,12 @@ NSMenuItemBadge* CreateBadge(const electron::ElectronMenuModel::Badge& badge)
 
   // If the menu item has an icon, set it.
   ui::ImageModel icon = model->GetIconAt(index);
-  if (icon.IsImage())
+  if (icon.IsImage()) {
     item.image = icon.GetImage().ToNSImage();
+    if (@available(macOS 15.0, *)) {
+      item.preferredImageVisibility = NSMenuItemPreferredImageVisibilityAlways;
+    }
+  }
 
   std::u16string toolTip = model->GetToolTipAt(index);
   item.toolTip = base::SysUTF16ToNSString(toolTip);
@@ -560,8 +581,14 @@ NSMenuItemBadge* CreateBadge(const electron::ElectronMenuModel::Badge& badge)
   ui::ImageModel icon = model->GetIconAt(index);
   if (icon.IsImage()) {
     item.image = icon.GetImage().ToNSImage();
+    if (@available(macOS 15.0, *)) {
+      item.preferredImageVisibility = NSMenuItemPreferredImageVisibilityAlways;
+    }
   } else {
     item.image = nil;
+    if (@available(macOS 15.0, *)) {
+      item.preferredImageVisibility = NSMenuItemPreferredImageVisibilityAutomatic;
+    }
     // Since macOS Tahoe introduced default menu icons, some role-based
     // menu items receive a system-provided icon. When we clear `item.image`
     // (set it to nil) AppKit may remove or fail to restore the role's
